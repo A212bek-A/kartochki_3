@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачать код
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Установить зависимости
+        run: npm install
+
+      - name: Создать Android-проект
+        run: npx cap add android
+
+      - name: Добавить разрешения для уведомлений
+        run: | MANIFEST=android/app/src/main/AndroidManifest.xml sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n <application#' "$MANIFEST" grep -n "uses-permission" "$MANIFEST" 
+      - name: Синхронизировать файлы приложения
+        run: npx cap sync android
+
+      - name: Собрать APK
+        working-directory: android
+        run: | chmod +x gradlew ./gradlew assembleDebug 
+      - name: Сохранить APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kartochki-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
